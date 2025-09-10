@@ -9,11 +9,11 @@ Universal Tool Framework (UTF)
 - TaskResult: 任务结果类
 """
 
-from utf.core.engine import UniversalTaskEngine
-from utf.config.settings import FrameworkConfig
-from utf.models.task import Task, TodoItem, TaskStatus, TaskResult
-from utf.models.tool import ToolResult, ToolCall
-from utf.tools.base import BaseTool
+from .core.engine import UniversalTaskEngine
+from .config.settings import FrameworkConfig
+from .models.task import Task, TodoItem, TaskStatus, TaskResult
+from .models.tool import ToolResult, ToolCall
+from .tools.base import BaseTool
 
 __version__ = "0.1.0"
 __author__ = "UTF Development Team"

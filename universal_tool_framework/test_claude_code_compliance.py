@@ -16,8 +16,8 @@ async def test_claude_code_compliance():
     print("=" * 50)
     
     try:
-        from utf import UniversalTaskEngine, FrameworkConfig
-        from utf.tools.system_tools import GeneralProcessorTool
+        from universal_tool_framework.utf import UniversalTaskEngine, FrameworkConfig
+        from universal_tool_framework.utf.tools.system_tools import GeneralProcessorTool
         
         # 创建配置
         config = FrameworkConfig()

@@ -8,7 +8,7 @@ import sys
 from typing import Optional
 from pathlib import Path
 
-from utf.config.settings import LoggingConfig
+from ..config.settings import LoggingConfig
 
 
 def setup_logging(config: LoggingConfig) -> None:

@@ -11,9 +11,9 @@ from pathlib import Path
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-from utf import UniversalTaskEngine, FrameworkConfig
-from utf.tools.system_tools import GeneralProcessorTool
-from utf.ai.llm_client import LLMMessage
+from universal_tool_framework.utf import UniversalTaskEngine, FrameworkConfig
+from universal_tool_framework.utf.tools.system_tools import GeneralProcessorTool
+from universal_tool_framework.utf.ai.llm_client import LLMMessage
 
 async def test_json_parsing_fix():
     """测试JSON解析修复"""
@@ -39,8 +39,8 @@ async def test_json_parsing_fix():
     # 测试2: 任务分解
     print("\n2. 测试任务分解JSON解析...")
     try:
-        from utf.models.task import Task
-        from utf.models.execution import ExecutionContext
+        from universal_tool_framework.utf.models.task import Task
+        from universal_tool_framework.utf.models.execution import ExecutionContext
         
         test_task = Task(
             id="test_task",

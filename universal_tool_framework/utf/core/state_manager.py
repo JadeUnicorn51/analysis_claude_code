@@ -15,16 +15,16 @@ from datetime import datetime, timedelta
 from dataclasses import asdict
 from contextlib import asynccontextmanager
 
-from utf.models.task import Task, TodoItem, TaskStatus
-from utf.models.execution import ExecutionContext, ExecutionResult
-from utf.models.tool import ToolResult
+from ..models.task import Task, TodoItem, TaskStatus
+from ..models.execution import ExecutionContext, ExecutionResult
+from ..models.tool import ToolResult
 
 def datetime_serializer(obj):
     """自定义datetime序列化器"""
     if isinstance(obj, datetime):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
-from utf.utils.logging import get_logger
+from ..utils.logging import get_logger
 
 
 class StateStorage:
@@ -115,7 +115,7 @@ class FileSystemStateStorage(StateStorage):
             
             # 反序列化复杂度
             if task_data.get('complexity'):
-                from utf.models.task import TaskComplexity
+                from ..models.task import TaskComplexity
                 task.complexity = TaskComplexity(**task_data['complexity'])
             
             # 反序列化TodoList
@@ -338,7 +338,7 @@ class DatabaseStateStorage(StateStorage):
                 
                 # 反序列化复杂度
                 if row[7]:
-                    from utf.models.task import TaskComplexity
+                    from ..models.task import TaskComplexity
                     complexity_data = json.loads(row[7])
                     task.complexity = TaskComplexity(**complexity_data)
                 

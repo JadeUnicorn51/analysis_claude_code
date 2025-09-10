@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Any, Set, Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from utf.models.tool import Tool, ToolDefinition
-from utf.utils.logging import get_logger
+from ..models.tool import Tool, ToolDefinition
+from ..utils.logging import get_logger
 
 
 class ToolState(Enum):

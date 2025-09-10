@@ -12,9 +12,9 @@ from pathlib import Path
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-from utf import UniversalTaskEngine, FrameworkConfig
-from utf.tools.file_tools import FileWriteTool
-from utf.tools.system_tools import GeneralProcessorTool
+from universal_tool_framework.utf import UniversalTaskEngine, FrameworkConfig
+from universal_tool_framework.utf.tools.file_tools import FileWriteTool
+from universal_tool_framework.utf.tools.system_tools import GeneralProcessorTool
 
 
 async def quick_demo():

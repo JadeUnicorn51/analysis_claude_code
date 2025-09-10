@@ -10,10 +10,10 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
-from utf.ai.llm_client import LLMClient, LLMMessage
-from utf.models.task import Task, TodoItem, TaskResult
-from utf.models.tool import ToolResult
-from utf.utils.logging import get_logger
+from ..ai.llm_client import LLMClient, LLMMessage
+from ..models.task import Task, TodoItem, TaskResult
+from ..models.tool import ToolResult
+from ..utils.logging import get_logger
 
 
 @dataclass

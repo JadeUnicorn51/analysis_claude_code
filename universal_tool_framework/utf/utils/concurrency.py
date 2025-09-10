@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional, List, Callable, Awaitable
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
 
-from utf.utils.logging import get_logger
+from ..utils.logging import get_logger
 
 
 @dataclass

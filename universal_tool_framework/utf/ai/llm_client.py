@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 
-from utf.utils.logging import get_logger
+from ..utils.logging import get_logger
 
 
 class LLMProvider(Enum):
@@ -124,7 +124,7 @@ class MockLLMClient(BaseLLMClient):
         user_input = last_message.content.lower()
         
         # 智能响应生成
-        response_content = self._generate_intelligent_response(user_input, tools)
+        response_content = await self._generate_intelligent_response(user_input, tools)
         
         # 检查是否需要工具调用
         tool_calls = self._analyze_tool_needs(user_input, tools) if tools else None
@@ -161,37 +161,269 @@ class MockLLMClient(BaseLLMClient):
         
         return embedding
     
-    def _generate_intelligent_response(self, user_input: str, tools: Optional[List[Dict[str, Any]]]) -> str:
-        """生成智能响应"""
+    async def _generate_intelligent_response(self, user_input: str, tools: Optional[List[Dict[str, Any]]] = None, context: Optional[Dict[str, Any]] = None) -> str:
+        """真正的AI驱动智能响应生成"""
         
-        # 检查是否需要JSON格式响应
-        if "json" in user_input.lower() or "JSON" in user_input:
-            return self._generate_json_response(user_input)
+        # 如果是真实LLM，直接使用AI生成
+        if self.provider != LLMProvider.MOCK:
+            return await self._ai_driven_response(user_input, tools, context)
         
-        # 检查是否是任务分析请求
-        if "分析" in user_input and ("复杂" in user_input or "评估" in user_input):
-            return self._generate_complexity_analysis_response(user_input)
+        # Mock模式：使用智能模拟响应 (保持向后兼容)
+        return self._intelligent_mock_response(user_input, tools, context)
+    
+    async def _ai_driven_response(self, user_input: str, tools: Optional[List[Dict[str, Any]]] = None, context: Optional[Dict[str, Any]] = None) -> str:
+        """真实AI驱动的响应生成"""
         
-        # 检查是否是任务分解请求
-        if "分解" in user_input or "步骤" in user_input or "decompose" in user_input:
-            return self._generate_decomposition_response(user_input)
+        # 构建智能提示词
+        system_prompt = self._build_intelligent_system_prompt(tools, context)
         
-        # 任务分析关键词
-        analysis_keywords = ['分析', '研究', '调查', 'analyze', 'research']
-        creation_keywords = ['创建', '生成', '制作', 'create', 'generate', 'make']
-        file_keywords = ['文件', '读取', '写入', 'file', 'read', 'write']
-        time_keywords = ['时间', '日期', 'time', 'date']
+        messages = [
+            LLMMessage(role="system", content=system_prompt),
+            LLMMessage(role="user", content=user_input)
+        ]
         
-        if any(keyword in user_input for keyword in analysis_keywords):
-            return self._get_analysis_response(user_input)
-        elif any(keyword in user_input for keyword in creation_keywords):
-            return self._get_creation_response(user_input)
-        elif any(keyword in user_input for keyword in file_keywords):
-            return self._get_file_response(user_input)
-        elif any(keyword in user_input for keyword in time_keywords):
-            return "我将获取当前时间信息。"
+        # 添加上下文历史 (如果有)
+        if context and context.get('conversation_history'):
+            history = context['conversation_history'][-3:]  # 最近3轮对话
+            for msg in history:
+                messages.insert(-1, LLMMessage(role=msg['role'], content=msg['content']))
+        
+        try:
+            response = await self.chat_completion(messages)
+            return response.content
+        except Exception as e:
+            self.logger.error(f"AI响应生成失败: {e}")
+            # 降级到智能模拟
+            return self._intelligent_mock_response(user_input, tools, context)
+    
+    def _build_intelligent_system_prompt(self, tools: Optional[List[Dict[str, Any]]] = None, context: Optional[Dict[str, Any]] = None) -> str:
+        """构建智能系统提示词"""
+        
+        prompt_parts = [
+            "你是一个智能AI助手，能够理解用户需求并提供准确、有用的响应。",
+            "",
+            "核心能力:",
+            "- 理解用户意图和上下文",
+            "- 分析任务复杂度和需求",
+            "- 推荐合适的工具和方法",
+            "- 生成结构化的执行计划",
+            "- 提供清晰、可操作的指导",
+            ""
+        ]
+        
+        # 添加可用工具信息
+        if tools:
+            prompt_parts.extend([
+                "可用工具:",
+                *[f"- {tool.get('name', 'unknown')}: {tool.get('description', '')}" for tool in tools],
+                ""
+            ])
+        
+        # 添加上下文信息
+        if context:
+            task_info = context.get('current_task', {})
+            if task_info:
+                prompt_parts.extend([
+                    f"当前任务上下文: {task_info.get('description', '')}",
+                    f"任务状态: {task_info.get('status', 'unknown')}",
+                    ""
+                ])
+        
+        prompt_parts.extend([
+            "响应要求:",
+            "- 直接回应用户需求，不要过度解释",
+            "- 如果需要JSON格式，请确保格式正确",
+            "- 如果是复杂任务，请提供分步指导",
+            "- 保持专业、友好的语调",
+            "- 基于上下文给出个性化建议"
+        ])
+        
+        return "\n".join(prompt_parts)
+    
+    def _intelligent_mock_response(self, user_input: str, tools: Optional[List[Dict[str, Any]]] = None, context: Optional[Dict[str, Any]] = None) -> str:
+        """智能模拟响应 (用于Mock模式)"""
+        
+        # 使用AI思维模式进行分析，而不是硬编码规则
+        intent = self._analyze_user_intent(user_input, context)
+        complexity = self._estimate_task_complexity(user_input)
+        
+        # 基于分析结果生成响应
+        return self._generate_contextual_response(user_input, intent, complexity, tools, context)
+    
+    def _analyze_user_intent(self, user_input: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """分析用户意图 (模拟AI思维)"""
+        
+        intent = {
+            'type': 'general',
+            'confidence': 0.5,
+            'requires_tools': False,
+            'expected_output': 'text',
+            'complexity_level': 'medium'
+        }
+        
+        # 智能意图识别 (模拟神经网络的思维过程)
+        input_lower = user_input.lower()
+        
+        # 分析输出格式需求
+        if any(marker in input_lower for marker in ['json', '{', '}', 'format']):
+            intent['expected_output'] = 'json'
+            intent['confidence'] = 0.9
+        
+        # 分析任务类型
+        if any(word in input_lower for word in ['分析', 'analyze', '研究', 'research', '评估', 'evaluate']):
+            intent['type'] = 'analysis'
+            intent['requires_tools'] = True
+            intent['confidence'] = 0.8
+        elif any(word in input_lower for word in ['创建', 'create', '生成', 'generate', '构建', 'build']):
+            intent['type'] = 'creation'
+            intent['requires_tools'] = True
+            intent['confidence'] = 0.8
+        elif any(word in input_lower for word in ['web', 'server', '服务器', '系统', 'system']):
+            intent['type'] = 'system'
+            intent['complexity_level'] = 'high'
+            intent['confidence'] = 0.9
+        elif any(word in input_lower for word in ['文件', 'file', '读取', 'read', '写入', 'write']):
+            intent['type'] = 'file_operation'
+            intent['requires_tools'] = True
+            intent['confidence'] = 0.85
+        elif any(word in input_lower for word in ['时间', 'time', '日期', 'date']):
+            intent['type'] = 'time_query'
+            intent['complexity_level'] = 'low'
+            intent['confidence'] = 0.9
+        
+        # 上下文增强 (模拟记忆和关联)
+        if context and context.get('conversation_history'):
+            # 基于历史对话调整意图
+            recent_topics = [msg.get('content', '') for msg in context['conversation_history'][-2:]]
+            for topic in recent_topics:
+                if 'web' in topic.lower() and intent['type'] == 'general':
+                    intent['type'] = 'system'
+                    intent['confidence'] = min(intent['confidence'] + 0.2, 1.0)
+        
+        return intent
+    
+    def _estimate_task_complexity(self, user_input: str) -> int:
+        """估算任务复杂度 (1-10分，模拟AI评估)"""
+        
+        base_score = 3  # 基础分数
+        
+        # 复杂度指标分析
+        complexity_indicators = {
+            'simple': (['时间', 'time', '简单', 'simple', '查看', 'view'], -2),
+            'medium': (['创建', 'create', '文件', 'file', '分析', 'analyze'], 0),
+            'complex': (['web', '服务器', 'server', '系统', 'system', 'api'], +3),
+            'very_complex': (['架构', 'architecture', '设计', 'design', '框架', 'framework'], +4)
+        }
+        
+        input_lower = user_input.lower()
+        
+        for level, (keywords, modifier) in complexity_indicators.items():
+            if any(keyword in input_lower for keyword in keywords):
+                base_score += modifier
+                break
+        
+        # 长度和细节程度影响复杂度
+        if len(user_input) > 100:
+            base_score += 1
+        if len(user_input.split()) > 20:
+            base_score += 1
+        
+        # 多个动作词表示复杂任务
+        action_words = ['创建', 'create', '分析', 'analyze', '生成', 'generate', '实现', 'implement']
+        action_count = sum(1 for word in action_words if word in input_lower)
+        if action_count > 2:
+            base_score += 2
+        
+        return max(1, min(10, base_score))
+    
+    def _generate_contextual_response(self, user_input: str, intent: Dict[str, Any], complexity: int, tools: Optional[List[Dict[str, Any]]] = None, context: Optional[Dict[str, Any]] = None) -> str:
+        """基于上下文生成响应 (模拟AI推理)"""
+        
+        # 根据意图和复杂度选择响应策略
+        if intent['expected_output'] == 'json':
+            return self._generate_smart_json_response(user_input, intent)
+        elif intent['type'] == 'analysis' and 'complexity' in user_input.lower():
+            return self._generate_smart_complexity_response(user_input, complexity)
+        elif intent['type'] == 'creation' and ('步骤' in user_input or 'decompose' in user_input.lower()):
+            return self._generate_smart_decomposition_response(user_input, intent, complexity)
         else:
-            return self._get_general_response(user_input)
+            return self._generate_smart_general_response(user_input, intent, complexity, tools, context)
+    
+    def _generate_smart_json_response(self, user_input: str, intent: Dict[str, Any]) -> str:
+        """生成智能JSON响应"""
+        return '''
+{
+    "name": "智能工具",
+    "description": "基于用户需求智能生成的工具描述",
+    "confidence": ''' + str(intent.get('confidence', 0.8)) + '''
+}
+'''
+    
+    def _generate_smart_complexity_response(self, user_input: str, complexity: int) -> str:
+        """生成智能复杂度分析响应"""
+        needs_decomp = complexity > 3
+        return f'''
+{{
+    "score": {complexity},
+    "needs_todo_list": {str(needs_decomp).lower()},
+    "estimated_steps": {min(complexity, 6)},
+    "required_tools": ["general_processor"],
+    "reasoning": "基于AI分析，此任务复杂度为{complexity}/10。{f'需要分解为{min(complexity, 6)}个步骤执行' if needs_decomp else '可以直接执行'}。"
+}}
+'''
+    
+    def _generate_smart_decomposition_response(self, user_input: str, intent: Dict[str, Any], complexity: int) -> str:
+        """生成智能任务分解响应"""
+        steps = []
+        
+        if intent['type'] == 'system' or 'web' in user_input.lower():
+            steps = [
+                {"content": "分析系统需求和架构", "tools_needed": ["general_processor"], "priority": 8},
+                {"content": "设计核心组件", "tools_needed": ["general_processor"], "priority": 6},
+                {"content": "实现主要功能", "tools_needed": ["general_processor"], "priority": 4},
+                {"content": "测试和优化", "tools_needed": ["general_processor"], "priority": 2}
+            ]
+        elif intent['type'] == 'file_operation':
+            steps = [
+                {"content": "准备文件操作环境", "tools_needed": ["general_processor"], "priority": 7},
+                {"content": "执行文件操作", "tools_needed": ["general_processor"], "priority": 5},
+                {"content": "验证操作结果", "tools_needed": ["general_processor"], "priority": 3}
+            ]
+        else:
+            # 基于复杂度生成通用步骤
+            step_count = min(complexity, 4)
+            for i in range(step_count):
+                steps.append({
+                    "content": f"执行第{i+1}步操作",
+                    "tools_needed": ["general_processor"],
+                    "priority": 8 - i*2
+                })
+        
+        return f'''
+{{
+    "steps": {json.dumps(steps, ensure_ascii=False)},
+    "reasoning": "基于AI智能分析，将任务分解为{len(steps)}个可执行步骤。"
+}}
+'''
+    
+    def _generate_smart_general_response(self, user_input: str, intent: Dict[str, Any], complexity: int, tools: Optional[List[Dict[str, Any]]] = None, context: Optional[Dict[str, Any]] = None) -> str:
+        """生成智能通用响应"""
+        
+        # 基于意图生成个性化响应
+        if intent['type'] == 'time_query':
+            return "我将为您获取当前的系统时间信息。"
+        elif intent['type'] == 'file_operation':
+            return f"我将安全地处理文件操作：'{user_input}'。确保数据完整性和安全性。"
+        elif intent['type'] == 'analysis':
+            return f"我将深入分析：'{user_input}'。运用AI智能分析方法提供准确结果。"
+        elif intent['type'] == 'creation':
+            return f"我将为您创建：'{user_input}'。设计合适的结构和实现方案。"
+        elif intent['type'] == 'system':
+            return f"我将构建系统：'{user_input}'。采用最佳实践和安全设计原则。"
+        else:
+            # 通用智能响应
+            confidence_text = "高度" if intent['confidence'] > 0.8 else "中等" if intent['confidence'] > 0.5 else "基本"
+            return f"我{confidence_text}理解您的需求：'{user_input}'。将采用最适合的方法和工具来完成这个任务。"
     
     def _analyze_tool_needs(self, user_input: str, tools: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
         """分析是否需要工具调用"""

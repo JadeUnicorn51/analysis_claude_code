@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 
-from utf.utils.logging import get_logger
+from ..utils.logging import get_logger
 
 
 @dataclass

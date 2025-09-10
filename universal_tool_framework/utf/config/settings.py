@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
-from utf.models.tool import Tool
+from ..models.tool import Tool
 
 
 class LLMConfig(BaseModel):

@@ -14,11 +14,11 @@ import time
 # 添加项目路径
 sys.path.insert(0, str(Path(__file__).parent))
 
-from utf import UniversalTaskEngine, FrameworkConfig
-from utf.tools.file_tools import FileReadTool, FileWriteTool
-from utf.tools.system_tools import GeneralProcessorTool
-from utf.utils.logging import setup_logging
-from utf.models.task import TaskStatus
+from universal_tool_framework.utf import UniversalTaskEngine, FrameworkConfig
+from universal_tool_framework.utf.tools.file_tools import FileReadTool, FileWriteTool
+from universal_tool_framework.utf.tools.system_tools import GeneralProcessorTool
+from universal_tool_framework.utf.utils.logging import setup_logging
+from universal_tool_framework.utf.models.task import TaskStatus
 
 
 class EnhancedUTFCli:

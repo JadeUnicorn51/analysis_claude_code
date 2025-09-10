@@ -2,9 +2,9 @@
 工具函数模块
 """
 
-from utf.utils.logging import get_logger, setup_logging
-from utf.utils.validation import validate_parameters, ValidationError
-from utf.utils.concurrency import ConcurrencyManager
+from ..utils.logging import get_logger, setup_logging
+from ..utils.validation import validate_parameters, ValidationError
+from ..utils.concurrency import ConcurrencyManager
 
 __all__ = [
     "get_logger",

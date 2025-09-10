@@ -9,9 +9,9 @@ import uuid
 from typing import Dict, Optional, List, Any
 from datetime import datetime, timedelta
 
-from utf.config.settings import FrameworkConfig
-from utf.models.execution import UserInteractionEvent, UserInteractionResponse
-from utf.utils.logging import get_logger
+from ..config.settings import FrameworkConfig
+from ..models.execution import UserInteractionEvent, UserInteractionResponse
+from ..utils.logging import get_logger
 
 
 class InteractionManager:

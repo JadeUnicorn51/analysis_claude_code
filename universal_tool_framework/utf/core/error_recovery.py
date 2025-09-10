@@ -12,9 +12,9 @@ from typing import Dict, List, Optional, Any, Callable, Union
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from utf.models.task import Task, TodoItem, TaskStatus
-from utf.models.tool import ToolResult
-from utf.utils.logging import get_logger
+from ..models.task import Task, TodoItem, TaskStatus
+from ..models.tool import ToolResult
+from ..utils.logging import get_logger
 
 
 class ErrorType(Enum):

@@ -9,20 +9,20 @@ import uuid
 from typing import AsyncGenerator, Optional, Dict, Any
 from datetime import datetime
 
-from utf.config.settings import FrameworkConfig
-from utf.models.task import Task, TodoItem, TaskStatus, TaskResult, TaskComplexity
-from utf.models.execution import ExecutionContext, UserInteractionEvent
-from utf.core.task_decomposer import TaskDecomposer
-from utf.core.tool_orchestrator import ToolOrchestrator
-from utf.core.interaction_manager import InteractionManager
-from utf.core.error_recovery import get_error_recovery_manager
-from utf.core.state_manager import get_state_manager
-from utf.core.tool_lifecycle import get_tool_lifecycle_manager
-from utf.utils.logging import get_logger
-from utf.utils.metrics import get_performance_monitor
-from utf.ai.llm_client import LLMClient, LLMConfig, LLMProvider
-from utf.ai.intelligent_planner import IntelligentPlanner
-from utf.ai.context_manager import ContextManager
+from ..config.settings import FrameworkConfig
+from ..models.task import Task, TodoItem, TaskStatus, TaskResult, TaskComplexity
+from ..models.execution import ExecutionContext, UserInteractionEvent
+from ..core.task_decomposer import TaskDecomposer
+from ..core.tool_orchestrator import ToolOrchestrator
+from ..core.interaction_manager import InteractionManager
+from ..core.error_recovery import get_error_recovery_manager
+from ..core.state_manager import get_state_manager
+from ..core.tool_lifecycle import get_tool_lifecycle_manager
+from ..utils.logging import get_logger
+from ..utils.metrics import get_performance_monitor
+from ..ai.llm_client import LLMClient, LLMConfig, LLMProvider
+from ..ai.intelligent_planner import IntelligentPlanner
+from ..ai.context_manager import ContextManager
 
 
 class UniversalTaskEngine:
@@ -623,7 +623,7 @@ class UniversalTaskEngine:
 总结应该控制在100字以内，语气友好专业。
 """
             
-            from utf.ai.llm_client import LLMMessage
+            from ..ai.llm_client import LLMMessage
             messages = [
                 LLMMessage(role="system", content="你是一个专业友好的AI助手，擅长总结任务完成情况。"),
                 LLMMessage(role="user", content=summary_prompt)

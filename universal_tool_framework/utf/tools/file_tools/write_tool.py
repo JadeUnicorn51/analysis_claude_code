@@ -9,8 +9,8 @@ import aiofiles
 from pathlib import Path
 from typing import Dict, Any, Optional, AsyncGenerator
 
-from utf.tools.base import BaseTool
-from utf.models.tool import ToolDefinition, ToolResult
+from ...tools.base import BaseTool
+from ...models.tool import ToolDefinition, ToolResult
 
 
 class FileWriteTool(BaseTool):

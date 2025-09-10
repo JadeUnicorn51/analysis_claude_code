@@ -9,10 +9,10 @@ import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from utf.config.settings import FrameworkConfig
-from utf.models.task import Task, TodoItem, TaskComplexity, TaskStatus
-from utf.models.execution import ExecutionContext
-from utf.utils.logging import get_logger
+from ..config.settings import FrameworkConfig
+from ..models.task import Task, TodoItem, TaskComplexity, TaskStatus
+from ..models.execution import ExecutionContext
+from ..utils.logging import get_logger
 
 
 class TaskDecomposer:

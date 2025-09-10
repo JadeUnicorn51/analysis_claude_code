@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Set
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from utf.models.tool import ToolCall, ToolResult
+from ..models.tool import ToolCall, ToolResult
 
 
 class ExecutionStrategy(str, Enum):

@@ -7,7 +7,7 @@ import asyncio
 from typing import Any, Dict, Optional, AsyncGenerator
 from abc import ABC, abstractmethod
 
-from utf.models.tool import Tool, ToolDefinition, ToolResult
+from ..models.tool import Tool, ToolDefinition, ToolResult
 
 
 class BaseTool(Tool):

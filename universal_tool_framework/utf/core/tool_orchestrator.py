@@ -10,14 +10,14 @@ import time
 from typing import List, Dict, Any, Optional, AsyncGenerator, Set
 from datetime import datetime
 
-from utf.config.settings import FrameworkConfig
-from utf.models.task import Task, TodoItem
-from utf.models.tool import Tool, ToolCall, ToolResult
-from utf.models.execution import (
+from ..config.settings import FrameworkConfig
+from ..models.task import Task, TodoItem
+from ..models.tool import Tool, ToolCall, ToolResult
+from ..models.execution import (
     ExecutionPlan, ExecutionContext, ToolExecutionBatch,
     ExecutionStrategy, ExecutionResult, ExecutionStatus
 )
-from utf.utils.logging import get_logger
+from ..utils.logging import get_logger
 
 
 class ToolOrchestrator:

@@ -46,6 +46,7 @@ universal_tool_framework/
 ├── run_example.py              # 快速演示程序
 ├── start.py                    # 基础交互CLI
 ├── start_enhanced.py           # 增强版CLI (展示高级功能)
+├── start_ai_demo.py            # AI智能演示 (推荐体验)
 ├── utf/                        # 核心框架
 │   ├── __init__.py
 │   ├── core/                   # 核心引擎
@@ -57,6 +58,11 @@ universal_tool_framework/
 │   │   ├── error_recovery.py  # 错误恢复系统
 │   │   ├── state_manager.py   # 状态持久化
 │   │   └── tool_lifecycle.py  # 工具生命周期管理
+│   ├── ai/                     # AI智能核心
+│   │   ├── __init__.py
+│   │   ├── llm_client.py      # LLM客户端集成
+│   │   ├── intelligent_planner.py # 智能规划器
+│   │   └── context_manager.py # 上下文管理器
 │   ├── models/                 # 数据模型
 │   │   ├── __init__.py
 │   │   ├── task.py            # 任务相关模型
@@ -110,9 +116,14 @@ python run_example.py
 python start.py
 ```
 
-#### 方式三：增强版体验 (推荐)
+#### 方式三：增强版体验
 ```bash
 python start_enhanced.py
+```
+
+#### 方式四：AI智能演示 (强烈推荐)
+```bash
+python start_ai_demo.py
 ```
 
 ### 编程使用
@@ -143,6 +154,43 @@ async def main():
 
 import asyncio
 asyncio.run(main())
+```
+
+#### AI智能用法 (推荐)
+```python
+from utf import UniversalTaskEngine, FrameworkConfig
+from utf.ai.llm_client import LLMConfig, LLMProvider
+
+# 创建AI增强配置
+config = FrameworkConfig()
+
+# 配置AI引擎 (可选，默认使用Mock)
+config.llm_config = LLMConfig(
+    provider="openai",  # 或 "anthropic", "mock"
+    model="gpt-4",
+    api_key="your-api-key",
+    temperature=0.7
+)
+
+engine = UniversalTaskEngine(config)
+
+# AI智能任务执行
+async def ai_example():
+    query = "分析项目文件并生成技术文档总结"
+    
+    async for result in engine.execute_task(query):
+        if result.type == "complexity_analysis_completed":
+            # AI分析的复杂度
+            print(f"AI评分: {result.data['score']}/10")
+            print(f"AI分析: {result.data['reasoning']}")
+        
+        elif result.type == "task_completed":
+            # AI生成的完成总结
+            ai_summary = result.data.get('ai_summary', '')
+            print(f"AI总结: {ai_summary}")
+            break
+
+asyncio.run(ai_example())
 ```
 
 #### 高级用法 (错误恢复、状态持久化)

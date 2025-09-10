@@ -115,12 +115,10 @@ class UniversalTaskEngine:
         
         self.logger.info(f"开始执行任务: {task_id}")
         
-        # 开始性能监控
-        async with self.performance_monitor.monitor_task_execution(task_id, "user_task"):
-            try:
-                # 创建执行上下文
-                execution_context = self._create_execution_context(task_id, session_id, context)
-                self._execution_contexts[task_id] = execution_context
+        try:
+            # 创建执行上下文
+            execution_context = self._create_execution_context(task_id, session_id, context)
+            self._execution_contexts[task_id] = execution_context
             
             # 第1步：添加用户消息到上下文
             await self.context_manager.add_user_message(task_id, user_query)
@@ -216,37 +214,37 @@ class UniversalTaskEngine:
                 task_id=task_id
             )
             
-            except Exception as e:
-                self.logger.error(f"任务执行失败: {task_id}, 错误: {str(e)}")
-                
-                # 尝试错误恢复
-                recovery_context = {
-                    'task_id': task_id,
-                    'error_source': 'task_execution',
-                    'attempt_count': 1,
-                    'max_attempts': 3
-                }
-                
-                recovery_result = await self.error_recovery_manager.handle_error(e, recovery_context)
-                
-                if recovery_result.get('action') == 'retry' and recovery_result.get('success', False):
-                    # 重试逻辑可以在这里实现
-                    self.logger.info(f"任务将重试: {task_id}")
-                
-                yield TaskResult(
-                    type="task_failed",
-                    data={
-                        "task_id": task_id,
-                        "error": str(e),
-                        "error_type": type(e).__name__,
-                        "recovery_attempted": True,
-                        "recovery_result": recovery_result
-                    },
-                    task_id=task_id
-                )
-            finally:
-                # 清理资源
-                self._cleanup_task(task_id)
+        except Exception as e:
+            self.logger.error(f"任务执行失败: {task_id}, 错误: {str(e)}")
+            
+            # 尝试错误恢复
+            recovery_context = {
+                'task_id': task_id,
+                'error_source': 'task_execution',
+                'attempt_count': 1,
+                'max_attempts': 3
+            }
+            
+            recovery_result = await self.error_recovery_manager.handle_error(e, recovery_context)
+            
+            if recovery_result.get('action') == 'retry' and recovery_result.get('success', False):
+                # 重试逻辑可以在这里实现
+                self.logger.info(f"任务将重试: {task_id}")
+            
+            yield TaskResult(
+                type="task_failed",
+                data={
+                    "task_id": task_id,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "recovery_attempted": True,
+                    "recovery_result": recovery_result
+                },
+                task_id=task_id
+            )
+        finally:
+            # 清理资源
+            self._cleanup_task(task_id)
     
     async def _execute_todo_list(
         self,

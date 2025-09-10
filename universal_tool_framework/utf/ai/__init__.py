@@ -7,12 +7,10 @@ AI智能核心模块
 from utf.ai.llm_client import LLMClient, LLMProvider
 from utf.ai.intelligent_planner import IntelligentPlanner
 from utf.ai.context_manager import ContextManager
-from utf.ai.reasoning_engine import ReasoningEngine
 
 __all__ = [
     "LLMClient",
     "LLMProvider", 
     "IntelligentPlanner",
     "ContextManager",
-    "ReasoningEngine",
 ]

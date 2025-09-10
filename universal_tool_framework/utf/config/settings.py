@@ -9,6 +9,17 @@ from pydantic_settings import BaseSettings
 from utf.models.tool import Tool
 
 
+class LLMConfig(BaseModel):
+    """LLM配置"""
+    provider: str = Field(default="mock", description="LLM提供商")
+    model: str = Field(default="mock-gpt-4", description="模型名称")
+    api_key: Optional[str] = Field(default=None, description="API密钥")
+    base_url: Optional[str] = Field(default=None, description="API基础URL")
+    temperature: float = Field(default=0.7, description="温度参数")
+    max_tokens: Optional[int] = Field(default=None, description="最大tokens")
+    timeout: float = Field(default=30.0, description="请求超时时间")
+
+
 class SecurityConfig(BaseModel):
     """安全配置"""
     enable_permission_check: bool = Field(default=True, description="启用权限检查")
@@ -79,6 +90,9 @@ class FrameworkConfig(BaseSettings):
     # 工具配置
     tools: List[Tool] = Field(default=[], description="可用工具列表")
     enable_mcp_tools: bool = Field(default=False, description="启用MCP工具")
+    
+    # AI配置
+    llm_config: LLMConfig = Field(default_factory=LLMConfig, description="LLM配置")
     
     # 子配置
     security: SecurityConfig = Field(default_factory=SecurityConfig, description="安全配置")

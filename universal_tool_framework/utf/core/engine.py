@@ -15,7 +15,14 @@ from utf.models.execution import ExecutionContext, UserInteractionEvent
 from utf.core.task_decomposer import TaskDecomposer
 from utf.core.tool_orchestrator import ToolOrchestrator
 from utf.core.interaction_manager import InteractionManager
+from utf.core.error_recovery import get_error_recovery_manager
+from utf.core.state_manager import get_state_manager
+from utf.core.tool_lifecycle import get_tool_lifecycle_manager
 from utf.utils.logging import get_logger
+from utf.utils.metrics import get_performance_monitor
+from utf.ai.llm_client import LLMClient, LLMConfig, LLMProvider
+from utf.ai.intelligent_planner import IntelligentPlanner
+from utf.ai.context_manager import ContextManager
 
 
 class UniversalTaskEngine:
@@ -38,11 +45,55 @@ class UniversalTaskEngine:
         self.tool_orchestrator = ToolOrchestrator(config)
         self.interaction_manager = InteractionManager(config)
         
+        # 新增的高级组件
+        self.error_recovery_manager = get_error_recovery_manager()
+        self.state_manager = get_state_manager()
+        self.tool_lifecycle_manager = get_tool_lifecycle_manager()
+        self.performance_monitor = get_performance_monitor()
+        
+        # AI智能组件
+        self.llm_client = self._create_llm_client()
+        self.intelligent_planner = IntelligentPlanner(self.llm_client)
+        self.context_manager = ContextManager(self.llm_client)
+        
         # 运行时状态
         self._active_tasks: Dict[str, Task] = {}
         self._execution_contexts: Dict[str, ExecutionContext] = {}
         
-        self.logger.info("UniversalTaskEngine initialized")
+        # 初始化组件
+        self._initialize_components()
+        
+        self.logger.info("UniversalTaskEngine initialized with AI intelligence")
+    
+    def _create_llm_client(self) -> LLMClient:
+        """创建LLM客户端"""
+        # 从配置中获取LLM设置，如果没有则使用Mock客户端
+        llm_config = getattr(self.config, 'llm_config', None)
+        if not llm_config:
+            # 默认使用Mock客户端进行演示
+            llm_config = LLMConfig(
+                provider=LLMProvider.MOCK,
+                model="mock-gpt-4",
+                temperature=0.7
+            )
+        
+        return LLMClient(llm_config)
+    
+    def _initialize_components(self) -> None:
+        """初始化组件"""
+        try:
+            # 注册工具到生命周期管理器
+            for tool in self.config.tools:
+                asyncio.create_task(
+                    self.tool_lifecycle_manager.register_tool(tool)
+                )
+            
+            # 启动后台服务
+            asyncio.create_task(self.state_manager.start_auto_save())
+            asyncio.create_task(self.tool_lifecycle_manager.start_health_monitoring())
+            
+        except Exception as e:
+            self.logger.error(f"组件初始化失败: {e}")
     
     async def execute_task(
         self, 
@@ -64,19 +115,28 @@ class UniversalTaskEngine:
         
         self.logger.info(f"开始执行任务: {task_id}")
         
-        try:
-            # 创建执行上下文
-            execution_context = self._create_execution_context(task_id, session_id, context)
-            self._execution_contexts[task_id] = execution_context
+        # 开始性能监控
+        async with self.performance_monitor.monitor_task_execution(task_id, "user_task"):
+            try:
+                # 创建执行上下文
+                execution_context = self._create_execution_context(task_id, session_id, context)
+                self._execution_contexts[task_id] = execution_context
             
-            # 第1步：任务分析与分解
+            # 第1步：添加用户消息到上下文
+            await self.context_manager.add_user_message(task_id, user_query)
+            
+            # 第2步：AI智能任务分析与分解
             yield TaskResult(
                 type="task_analysis_started",
                 data={"task_id": task_id, "query": user_query},
                 task_id=task_id
             )
             
-            complexity = await self.task_decomposer.analyze_complexity(user_query)
+            # 使用AI智能分析复杂度
+            complexity = await self.intelligent_planner.analyze_task_complexity(
+                user_query, 
+                context.model_dump() if hasattr(context, 'model_dump') else None
+            )
             
             yield TaskResult(
                 type="complexity_analysis_completed",
@@ -94,6 +154,9 @@ class UniversalTaskEngine:
             
             self._active_tasks[task_id] = task
             
+            # 保存任务状态
+            await self.state_manager.save_task(task)
+            
             # 根据复杂度决定执行策略
             if complexity.needs_todo_list:
                 # 复杂任务：分解为TodoList执行
@@ -103,7 +166,17 @@ class UniversalTaskEngine:
                     task_id=task_id
                 )
                 
-                todo_list = await self.task_decomposer.decompose_task(task, execution_context)
+                # 使用AI智能分解任务
+                available_tools = [tool.definition.name for tool in self.config.tools]
+                todo_list = await self.intelligent_planner.decompose_task_intelligently(
+                    task, available_tools, execution_context
+                )
+                
+                # 优化执行计划
+                todo_list = await self.intelligent_planner.optimize_execution_plan(
+                    todo_list, available_tools, execution_context
+                )
+                
                 task.todo_list = todo_list
                 
                 yield TaskResult(
@@ -127,31 +200,53 @@ class UniversalTaskEngine:
             # 任务完成
             task.update_status()
             
+            # 添加任务完成的AI响应
+            completion_message = await self._generate_completion_message(task)
+            await self.context_manager.add_assistant_message(task_id, completion_message)
+            
             yield TaskResult(
                 type="task_completed",
                 data={
                     "task_id": task_id,
                     "status": task.status.value,
                     "progress": task.progress_percentage,
-                    "duration": (datetime.now() - task.created_at).total_seconds()
+                    "duration": (datetime.now() - task.created_at).total_seconds(),
+                    "ai_summary": completion_message
                 },
                 task_id=task_id
             )
             
-        except Exception as e:
-            self.logger.error(f"任务执行失败: {task_id}, 错误: {str(e)}")
-            yield TaskResult(
-                type="task_failed",
-                data={
-                    "task_id": task_id,
-                    "error": str(e),
-                    "error_type": type(e).__name__
-                },
-                task_id=task_id
-            )
-        finally:
-            # 清理资源
-            self._cleanup_task(task_id)
+            except Exception as e:
+                self.logger.error(f"任务执行失败: {task_id}, 错误: {str(e)}")
+                
+                # 尝试错误恢复
+                recovery_context = {
+                    'task_id': task_id,
+                    'error_source': 'task_execution',
+                    'attempt_count': 1,
+                    'max_attempts': 3
+                }
+                
+                recovery_result = await self.error_recovery_manager.handle_error(e, recovery_context)
+                
+                if recovery_result.get('action') == 'retry' and recovery_result.get('success', False):
+                    # 重试逻辑可以在这里实现
+                    self.logger.info(f"任务将重试: {task_id}")
+                
+                yield TaskResult(
+                    type="task_failed",
+                    data={
+                        "task_id": task_id,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                        "recovery_attempted": True,
+                        "recovery_result": recovery_result
+                    },
+                    task_id=task_id
+                )
+            finally:
+                # 清理资源
+                self._cleanup_task(task_id)
     
     async def _execute_todo_list(
         self,
@@ -383,8 +478,25 @@ class UniversalTaskEngine:
     
     def _cleanup_task(self, task_id: str) -> None:
         """清理任务资源"""
+        # 保存最终状态
+        task = self._active_tasks.get(task_id)
+        if task:
+            asyncio.create_task(self.state_manager.save_task(task, force=True))
+        
+        # 清理运行时资源
         self._active_tasks.pop(task_id, None)
         self._execution_contexts.pop(task_id, None)
+        
+        # 清理交互资源
+        self.interaction_manager.cleanup_task_interactions(task_id)
+        
+        # 记录性能指标
+        self.performance_monitor.record_concurrency_metrics(
+            active_tasks=len(self._active_tasks),
+            active_tools=0,  # 这里可以从工具编排器获取
+            queue_size=0
+        )
+        
         self.logger.info(f"任务资源已清理: {task_id}")
     
     def get_active_tasks(self) -> Dict[str, Task]:
@@ -409,3 +521,137 @@ class UniversalTaskEngine:
             self.logger.info(f"任务已取消: {task_id}")
             return True
         return False
+    
+    async def resume_task(self, task_id: str) -> AsyncGenerator[TaskResult, None]:
+        """恢复任务执行"""
+        # 从状态管理器加载任务
+        task = await self.state_manager.load_task(task_id)
+        if not task:
+            yield TaskResult(
+                type="task_resume_failed",
+                data={
+                    "task_id": task_id,
+                    "error": "任务不存在或无法加载"
+                },
+                task_id=task_id
+            )
+            return
+        
+        # 检查任务是否可以恢复
+        if task.status not in [TaskStatus.IN_PROGRESS, TaskStatus.PENDING]:
+            yield TaskResult(
+                type="task_resume_failed",
+                data={
+                    "task_id": task_id,
+                    "error": f"任务状态 {task.status.value} 无法恢复"
+                },
+                task_id=task_id
+            )
+            return
+        
+        self.logger.info(f"恢复任务执行: {task_id}")
+        
+        # 重新加载到活跃任务列表
+        self._active_tasks[task_id] = task
+        
+        # 创建执行上下文
+        execution_context = self._create_execution_context(task_id, task_id, {})
+        self._execution_contexts[task_id] = execution_context
+        
+        yield TaskResult(
+            type="task_resumed",
+            data={
+                "task_id": task_id,
+                "progress": task.progress_percentage,
+                "remaining_todos": len(task.pending_todos)
+            },
+            task_id=task_id
+        )
+        
+        try:
+            # 继续执行未完成的TodoList
+            if task.todo_list:
+                async for result in self._execute_todo_list(task, execution_context):
+                    yield result
+            
+            # 更新任务状态
+            task.update_status()
+            
+            if task.status == TaskStatus.COMPLETED:
+                yield TaskResult(
+                    type="task_completed",
+                    data={
+                        "task_id": task_id,
+                        "progress": task.progress_percentage,
+                        "resumed": True
+                    },
+                    task_id=task_id
+                )
+            
+        except Exception as e:
+            self.logger.error(f"任务恢复失败: {task_id}, 错误: {e}")
+            yield TaskResult(
+                type="task_resume_failed",
+                data={
+                    "task_id": task_id,
+                    "error": str(e)
+                },
+                task_id=task_id
+            )
+        finally:
+            self._cleanup_task(task_id)
+    
+    async def _generate_completion_message(self, task: Task) -> str:
+        """生成任务完成的AI消息"""
+        try:
+            # 获取任务相关上下文
+            context_messages = await self.context_manager.get_relevant_context(task.id)
+            
+            # 构建完成总结提示
+            summary_prompt = f"""
+任务已完成：{task.description}
+
+执行概况：
+- 总步骤数：{len(task.todo_list)}
+- 完成步骤：{len(task.completed_todos)}
+- 执行时间：{(datetime.now() - task.created_at).total_seconds():.1f}秒
+- 完成率：{task.progress_percentage:.1f}%
+
+请生成一个简洁友好的完成总结，包括：
+1. 任务完成确认
+2. 主要成果
+3. 如果有进一步建议
+
+总结应该控制在100字以内，语气友好专业。
+"""
+            
+            from utf.ai.llm_client import LLMMessage
+            messages = [
+                LLMMessage(role="system", content="你是一个专业友好的AI助手，擅长总结任务完成情况。"),
+                LLMMessage(role="user", content=summary_prompt)
+            ]
+            
+            response = await self.llm_client.chat_completion(messages)
+            return response.content.strip()
+            
+        except Exception as e:
+            self.logger.error(f"生成完成消息失败: {e}")
+            return f"任务 '{task.description}' 已成功完成！共完成 {len(task.completed_todos)} 个步骤。"
+    
+    async def get_system_status(self) -> Dict[str, Any]:
+        """获取系统状态"""
+        return {
+            "engine": {
+                "active_tasks": len(self._active_tasks),
+                "task_ids": list(self._active_tasks.keys())
+            },
+            "error_recovery": self.error_recovery_manager.get_recovery_statistics(),
+            "performance": self.performance_monitor.get_performance_report(hours=1),
+            "tool_lifecycle": self.tool_lifecycle_manager.get_lifecycle_statistics(),
+            "available_tools": await self.tool_lifecycle_manager.get_available_tools(),
+            "ai_status": {
+                "llm_provider": self.llm_client.get_provider().value,
+                "llm_model": self.llm_client.get_model(),
+                "context_memory_usage": self.context_manager.get_memory_usage()
+            }
+        }

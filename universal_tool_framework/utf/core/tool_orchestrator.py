@@ -382,29 +382,39 @@ class ToolOrchestrator:
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """并发执行批次"""
         
-        # 创建并发任务
-        tasks = []
-        for tool_call in batch.tool_calls:
-            task = asyncio.create_task(
-                self._execute_single_tool_call(tool_call, context)
-            )
-            tasks.append((tool_call.id, task))
-        
-        # 等待所有任务完成
-        for call_id, task in tasks:
+        # 执行并发工具调用 (异步生成器不能用create_task)
+        if len(batch.tool_calls) == 1:
+            # 单个工具调用，直接执行
+            tool_call = batch.tool_calls[0]
             try:
-                async for result in await task:
+                async for result in self._execute_single_tool_call(tool_call, context):
                     yield {
                         "type": "tool_result",
-                        "call_id": call_id,
+                        "call_id": tool_call.id,
                         "result": result.model_dump()
                     }
             except Exception as e:
                 yield {
                     "type": "tool_error",
-                    "call_id": call_id,
+                    "call_id": tool_call.id,
                     "error": str(e)
                 }
+        else:
+            # 多个工具调用，顺序执行 (暂不支持真正并发)
+            for tool_call in batch.tool_calls:
+                try:
+                    async for result in self._execute_single_tool_call(tool_call, context):
+                        yield {
+                            "type": "tool_result",
+                            "call_id": tool_call.id,
+                            "result": result.model_dump()
+                        }
+                except Exception as e:
+                    yield {
+                        "type": "tool_error",
+                        "call_id": tool_call.id,
+                        "error": str(e)
+                    }
     
     async def _execute_batch_sequential(
         self,

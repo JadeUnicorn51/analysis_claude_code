@@ -18,6 +18,12 @@ from contextlib import asynccontextmanager
 from utf.models.task import Task, TodoItem, TaskStatus
 from utf.models.execution import ExecutionContext, ExecutionResult
 from utf.models.tool import ToolResult
+
+def datetime_serializer(obj):
+    """自定义datetime序列化器"""
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 from utf.utils.logging import get_logger
 
 
@@ -79,7 +85,7 @@ class FileSystemStateStorage(StateStorage):
         }
         
         async with aiofiles.open(task_file, 'w', encoding='utf-8') as f:
-            await f.write(json.dumps(task_data, indent=2, ensure_ascii=False))
+            await f.write(json.dumps(task_data, indent=2, ensure_ascii=False, default=datetime_serializer))
         
         self.logger.debug(f"任务状态已保存: {task.id}")
     

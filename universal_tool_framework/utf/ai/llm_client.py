@@ -164,6 +164,18 @@ class MockLLMClient(BaseLLMClient):
     def _generate_intelligent_response(self, user_input: str, tools: Optional[List[Dict[str, Any]]]) -> str:
         """生成智能响应"""
         
+        # 检查是否需要JSON格式响应
+        if "json" in user_input.lower() or "JSON" in user_input:
+            return self._generate_json_response(user_input)
+        
+        # 检查是否是任务分析请求
+        if "分析" in user_input and ("复杂" in user_input or "评估" in user_input):
+            return self._generate_complexity_analysis_response(user_input)
+        
+        # 检查是否是任务分解请求
+        if "分解" in user_input or "步骤" in user_input or "decompose" in user_input:
+            return self._generate_decomposition_response(user_input)
+        
         # 任务分析关键词
         analysis_keywords = ['分析', '研究', '调查', 'analyze', 'research']
         creation_keywords = ['创建', '生成', '制作', 'create', 'generate', 'make']
@@ -258,6 +270,77 @@ class MockLLMClient(BaseLLMClient):
     
     def _get_general_response(self, user_input: str) -> str:
         return f"我理解您的需求：'{user_input}'。我将选择合适的工具和方法来完成这个任务。"
+    
+    def _generate_json_response(self, user_input: str) -> str:
+        """生成JSON格式响应"""
+        return '''
+{
+    "name": "文件操作工具",
+    "description": "一个简单而强大的文件操作工具，支持读取、写入、创建和删除文件操作，具有安全检查和错误处理机制。"
+}
+'''
+    
+    def _generate_complexity_analysis_response(self, user_input: str) -> str:
+        """生成复杂度分析响应"""
+        # 简单的复杂度评估逻辑
+        complexity_score = 5  # 默认中等复杂度
+        
+        if any(keyword in user_input for keyword in ['web', '服务器', 'server', '系统', 'system']):
+            complexity_score = 7
+        elif any(keyword in user_input for keyword in ['时间', 'time', '简单', 'simple']):
+            complexity_score = 2
+        elif any(keyword in user_input for keyword in ['API', 'api', '文档', 'document']):
+            complexity_score = 6
+        
+        needs_decomp = complexity_score > 3
+        estimated_steps = min(complexity_score, 5)
+        
+        return f'''
+{{
+    "score": {complexity_score},
+    "needs_todo_list": {str(needs_decomp).lower()},
+    "estimated_steps": {estimated_steps},
+    "required_tools": ["general_processor"],
+    "reasoning": "基于任务关键词分析，评估为{complexity_score}分复杂度。{'需要分解为多个步骤' if needs_decomp else '可以直接执行'}。"
+}}
+'''
+    
+    def _generate_decomposition_response(self, user_input: str) -> str:
+        """生成任务分解响应"""
+        # 根据任务类型生成不同的分解步骤
+        if 'web' in user_input.lower() or '服务器' in user_input:
+            steps = [
+                {"content": "设计web服务器架构", "tools_needed": ["general_processor"], "priority": 8},
+                {"content": "实现核心功能模块", "tools_needed": ["general_processor"], "priority": 6},
+                {"content": "添加路由和中间件", "tools_needed": ["general_processor"], "priority": 4},
+                {"content": "测试和部署服务器", "tools_needed": ["general_processor"], "priority": 2}
+            ]
+        elif '文档' in user_input or 'document' in user_input.lower():
+            steps = [
+                {"content": "分析项目结构和代码", "tools_needed": ["file_read"], "priority": 7},
+                {"content": "提取API接口信息", "tools_needed": ["general_processor"], "priority": 5},
+                {"content": "生成文档内容", "tools_needed": ["general_processor"], "priority": 3},
+                {"content": "创建并保存文档文件", "tools_needed": ["file_write"], "priority": 1}
+            ]
+        elif '时间' in user_input or 'time' in user_input.lower():
+            steps = [
+                {"content": "获取系统当前时间", "tools_needed": ["general_processor"], "priority": 5},
+                {"content": "格式化时间显示", "tools_needed": ["general_processor"], "priority": 3}
+            ]
+        else:
+            # 通用分解
+            steps = [
+                {"content": "分析任务需求", "tools_needed": ["general_processor"], "priority": 6},
+                {"content": "准备执行环境", "tools_needed": ["general_processor"], "priority": 4},
+                {"content": "执行主要操作", "tools_needed": ["general_processor"], "priority": 2}
+            ]
+        
+        return f'''
+{{
+    "steps": {json.dumps(steps, ensure_ascii=False)},
+    "reasoning": "根据任务类型进行智能分解，确保每个步骤都是可执行的。"
+}}
+'''
     
     def _init_response_templates(self) -> Dict[str, str]:
         """初始化响应模板"""

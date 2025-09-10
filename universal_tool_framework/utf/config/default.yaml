@@ -1,0 +1,73 @@
+# Universal Tool Framework 默认配置文件
+
+# 基础配置
+name: "UTF"
+version: "0.1.0"
+debug: false
+
+# 安全配置
+security:
+  enable_permission_check: true
+  enable_parameter_validation: true
+  sandbox_mode: false
+  max_execution_time: 300
+  allowed_file_extensions:
+    - ".txt"
+    - ".json"
+    - ".yaml" 
+    - ".yml"
+    - ".md"
+    - ".py"
+    - ".js"
+    - ".ts"
+    - ".css"
+    - ".html"
+  blocked_commands:
+    - "rm"
+    - "del"
+    - "format"
+    - "fdisk"
+    - "shutdown"
+    - "reboot"
+  audit_level: "basic"
+
+# 并发配置
+concurrency:
+  max_parallel_tools: 10
+  max_parallel_batches: 3
+  tool_timeout_seconds: 120
+  batch_timeout_seconds: 600
+  enable_smart_scheduling: true
+
+# 日志配置
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  enable_file_logging: true
+  log_file: "utf.log"
+  max_file_size: 10485760  # 10MB
+  backup_count: 5
+  enable_structured_logging: true
+
+# 交互配置
+interaction:
+  allow_user_interruption: true
+  progress_update_interval: 1.0
+  confirmation_required: false
+  auto_continue_simple_tasks: true
+  user_response_timeout: 300
+
+# 任务配置
+task:
+  complexity_threshold: 3
+  max_todo_items: 20
+  enable_auto_decomposition: true
+  enable_dependency_analysis: true
+  retry_failed_todos: true
+  max_retry_attempts: 3
+
+# MCP工具支持
+enable_mcp_tools: false
+
+# 扩展配置
+extensions: {}
